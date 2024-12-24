@@ -88,7 +88,7 @@
 - name: Run database migrations
   become: yes
   become_user: laravel
-  command: php artisan migrate
+  command: php artisan migrate --force
   args:
     chdir: /var/www/html/app-for-devops
 
