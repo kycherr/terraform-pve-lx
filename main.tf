@@ -35,15 +35,6 @@ resource "proxmox_lxc" "ansible" {
     gw = var.vm_gateway
   }
 
-provisioner "local-exec" {
-  command = <<EOL
-    if [ ! -f /root/.ssh/id_rsa ]; then
-      ssh-keygen -t rsa -b 2048 -N '' -f /root/.ssh/id_rsa
-    fi
-    sshpass -p "${var.lx_password}" scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ansible/ root@${var.ip_ansible}:/root/
-  EOL
-}
-
 provisioner "remote-exec" {
     connection {
       type     = "ssh"
@@ -55,7 +46,7 @@ provisioner "remote-exec" {
   inline = [
     "export DEBIAN_FRONTEND=noninteractive",
     # ansible-playbook main.yml --extra-vars "db_host=192.168.66.223 db_name=app_db db_user=app_user db_pass=app_pass" -i /etc/ansible/hosts
-    #"echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && systemctl restart sshd",
+    "echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && systemctl restart sshd",
     "apt update && apt install -y openssh-server ansible sshpass",
     "mkdir -p /root/.ssh /etc/ansible",
     "echo ${var.lx_password} > 1.txt",
@@ -69,9 +60,13 @@ provisioner "remote-exec" {
     "echo '[db]\\n${var.ip_db}\\n\\n[server]\\n${var.ip_web}' > /etc/ansible/hosts",
     "ansible all -m ping -i /etc/ansible/hosts"
   ]
-
-
   }
+
+  provisioner "local-exec" {
+  command = <<EOL
+    scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ansible/ root@${var.ip_ansible}:/root/
+  EOL
+}
 
   cores  = 2
   memory = 2048
