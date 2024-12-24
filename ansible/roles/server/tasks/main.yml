@@ -4,11 +4,31 @@
       - apache2
       - php
       - php-pgsql
+      - php-xml
+      - php-curl
       - composer
       - nodejs
       - npm
     state: present
     update_cache: yes
+
+- name: Verify PHP extensions are installed
+  command: php -m
+  register: php_extensions
+  failed_when: "'dom' not in php_extensions.stdout or 'xml' not in php_extensions.stdout or 'curl' not in php_extensions.stdout"
+
+- name: Create Laravel system user
+  user:
+    name: laravel
+    home: /var/www/html/app-for-devops
+    shell: /bin/bash
+
+- name: Set ownership of Laravel app
+  file:
+    path: /var/www/html/app-for-devops
+    owner: laravel
+    group: www-data
+    recurse: yes
 
 - name: Clone Laravel application
   git:
@@ -22,19 +42,51 @@
     dest: /var/www/html/app-for-devops/.env
 
 - name: Install PHP dependencies
-  command: composer install chdir=/var/www/html/app-for-devops
+  become: yes
+  become_user: laravel
+  command: composer install
+  args:
+    chdir: /var/www/html/app-for-devops
 
 - name: Generate application key
-  command: php artisan key:generate chdir=/var/www/html/app-for-devops
+  become: yes
+  become_user: laravel
+  command: php artisan key:generate
+  args:
+    chdir: /var/www/html/app-for-devops
 
 - name: Run database migrations
-  command: php artisan migrate chdir=/var/www/html/app-for-devops
+  become: yes
+  become_user: laravel
+  command: php artisan migrate
+  args:
+    chdir: /var/www/html/app-for-devops
 
 - name: Install NPM dependencies
-  command: npm install chdir=/var/www/html/app-for-devops
+  become: yes
+  become_user: laravel
+  command: npm install
+  args:
+    chdir: /var/www/html/app-for-devops
 
 - name: Build frontend assets
-  command: npm run build chdir=/var/www/html/app-for-devops
+  become: yes
+  become_user: laravel
+  command: npm run build
+  args:
+    chdir: /var/www/html/app-for-devops
 
 - name: Set permissions for Laravel
-  command: chmod -R 775 /var/www/html/app-for-devops
+  file:
+    path: /var/www/html/app-for-devops
+    state: directory
+    mode: '0775'
+    recurse: yes
+
+- name: Enable Apache rewrite module
+  command: a2enmod rewrite
+
+- name: Restart Apache
+  service:
+    name: apache2
+    state: restarted
