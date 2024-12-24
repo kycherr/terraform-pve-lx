@@ -1,3 +1,17 @@
+- name: Install required packages
+  apt:
+    name:
+      - apache2
+      - php
+      - php-pgsql
+      - php-xml
+      - php-curl
+      - composer
+      - git
+      - curl
+    state: present
+    update_cache: yes
+
 - name: Clone Laravel application
   git:
     repo: "https://github.com/Practical-DevOps/app-for-devops"
@@ -37,18 +51,6 @@
   register: node_version
   changed_when: false
   failed_when: '"v20" not in node_version.stdout'
-
-- name: Install required packages
-  apt:
-    name:
-      - apache2
-      - php
-      - php-pgsql
-      - php-xml
-      - php-curl
-      - composer
-    state: present
-    update_cache: yes
 
 - name: Verify PHP extensions are installed
   command: php -m
