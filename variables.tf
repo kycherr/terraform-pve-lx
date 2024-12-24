@@ -55,7 +55,6 @@ variable "vm_ips" {
 variable "lx_password" {
   description = "Password for lx root user"
   type        = string
-  sensitive   = true
 }
 
 variable "ip_ansible" {
