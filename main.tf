@@ -58,15 +58,20 @@ provisioner "remote-exec" {
     "sshpass -p P@ssw0rd ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_db}",
     "sshpass -p P@ssw0rd ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_web}",
     "echo '[db]\\n${var.ip_db}\\n\\n[server]\\n${var.ip_web}' > /etc/ansible/hosts",
-    "ansible all -m ping -i /etc/ansible/hosts"
+    "ansible all -m ping -i /etc/ansible/hosts",
   ]
   }
 
-  provisioner "local-exec" {
+provisioner "local-exec" {
   command = <<EOL
-    scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ansible/ root@${var.ip_ansible}:/root/
+    scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ansible/ root@${var.ip_ansible}:/root/ &&
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@${var.ip_ansible} <<EOF
+      cd /root/ansible &&
+      ansible-playbook main.yml --extra-vars "db_host=${var.ip_db} db_name=app_db db_user=app_user db_pass=app_pass" -i /etc/ansible/hosts
+    EOF
   EOL
 }
+
 
   cores  = 2
   memory = 2048
