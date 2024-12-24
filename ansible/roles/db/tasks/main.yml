@@ -1,3 +1,4 @@
+---
 - name: Install required Python libraries
   apt:
     name:
@@ -47,7 +48,7 @@
     regexp: '^local\s+all\s+postgres\s+peer$'
     line: 'local   all             postgres                                md5'
     state: present
-    notify: Restart PostgreSQL
+  register: auth_config_updated
 
 - name: Allow remote connections in pg_hba.conf
   lineinfile:
@@ -55,7 +56,7 @@
     insertafter: '^# IPv4 local connections:'
     line: "host    all             all             0.0.0.0/0               md5"
     state: present
-    notify: Restart PostgreSQL
+  register: remote_config_updated
 
 - name: Allow PostgreSQL to listen on all IPs
   lineinfile:
@@ -63,11 +64,13 @@
     regexp: '^#listen_addresses ='
     line: "listen_addresses = '*'"
     state: present
-    notify: Restart PostgreSQL
+  register: listen_config_updated
 
-- name: Restart PostgreSQL service
+- name: Restart PostgreSQL service if configuration updated
   service:
     name: postgresql
     state: restarted
-  when: false
-
+  when:
+    - auth_config_updated.changed
+    - remote_config_updated.changed
+    - listen_config_updated.changed

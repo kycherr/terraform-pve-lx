@@ -35,6 +35,11 @@ resource "proxmox_lxc" "ansible" {
     gw = var.vm_gateway
   }
 
+  provisioner "local-exec" {
+    command = <<EOL
+    scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa ansible/ root@${var.ip_ansible}:/root/
+    EOL
+  }
 
 provisioner "remote-exec" {
     connection {
