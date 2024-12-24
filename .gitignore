@@ -8,5 +8,3 @@
 # Terraform working directories
 .terraform/
 
-# Exclude tfvars file containing sensitive data
-*.tfvars
