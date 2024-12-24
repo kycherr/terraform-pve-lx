@@ -30,6 +30,13 @@
     group: www-data
     recurse: yes
 
+- name: Set permissions for Laravel app
+  file:
+    path: /var/www/html/app-for-devops
+    state: directory
+    mode: '0775'
+    recurse: yes
+
 - name: Clone Laravel application
   git:
     repo: "https://github.com/Practical-DevOps/app-for-devops"
