@@ -35,6 +35,20 @@
     line: 'local   all             postgres                                md5'
     state: present
 
+- name: Allow remote connections in pg_hba.conf
+  lineinfile:
+    path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
+    insertafter: '^# IPv4 local connections:'
+    line: "host    all             all             0.0.0.0/0               md5"
+    state: present
+
+- name: Allow PostgreSQL to listen on all IPs
+  lineinfile:
+    path: "/etc/postgresql/{{ pg_version }}/main/postgresql.conf"
+    regexp: '^#listen_addresses ='
+    line: "listen_addresses = '*'"
+    state: present
+
 - name: Restart PostgreSQL service
   service:
     name: postgresql
