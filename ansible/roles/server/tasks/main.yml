@@ -12,12 +12,15 @@
     state: present
     update_cache: yes
 
+- name: Mark Laravel app directory as safe for Git
+  command: git config --global --add safe.directory /var/www/html/app-for-devops
+
 - name: Clone Laravel application
   git:
     repo: "https://github.com/Practical-DevOps/app-for-devops"
     dest: /var/www/html/app-for-devops
     update: yes
-    force: yes  # Ensures it replaces the existing repo if required
+    force: yes
 
 - name: Remove conflicting Node.js packages
   apt:
