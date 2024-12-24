@@ -30,12 +30,12 @@
     line: 'local   all             postgres                                md5'
     state: present
 
-- name: Restart PostgreSQL service
-  service:
-    name: postgresql
-    state: restarted
-
 - name: Set password for postgres user
   become: yes
   become_user: postgres
   command: psql -c "ALTER USER postgres PASSWORD '{{ db_pass }}';"
+
+- name: Restart PostgreSQL service
+  service:
+    name: postgresql
+    state: restarted
