@@ -45,16 +45,15 @@ provisioner "remote-exec" {
 
   inline = [
     "export DEBIAN_FRONTEND=noninteractive",
+    "echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && systemctl restart sshd",
     "apt update && apt install -y openssh-server ansible sshpass",
-    "echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config",
-    "systemctl restart sshd",
     "mkdir -p /root/.ssh /etc/ansible",
     "ssh-keygen -t rsa -b 2048 -N '' -f /root/.ssh/id_rsa",
-    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_db}",
-    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_web}",
+    "sshpass -p ${var.lx_password} ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_db}",
+    "sshpass -p ${var.lx_password} ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_web}",
     "ssh-keyscan ${var.ip_db} >> /root/.ssh/known_hosts",
     "ssh-keyscan ${var.ip_web} >> /root/.ssh/known_hosts",
-    "echo -e '[web]\\n${var.ip_web}\\n\\n[db]\\n${var.ip_db}' > /etc/ansible/hosts",
+    "echo '[web]\\n${var.ip_web}\\n\\n[db]\\n${var.ip_db}' > /etc/ansible/hosts",
     "ansible all -m ping -i /etc/ansible/hosts"
   ]
 
