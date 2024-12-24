@@ -24,7 +24,7 @@
     state: started
     enabled: yes
 
-- name: Allow local connections without password
+- name: Allow local connections without password (peer authentication)
   lineinfile:
     path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
     regexp: '^local\s+all\s+postgres\s+md5$'
@@ -50,23 +50,36 @@
     name: postgresql
     state: restarted
 
-- name: Check if postgres user password is already set
-  shell: |
-    psql -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
-  become: yes
-  become_user: postgres
-  register: postgres_password_status
-  changed_when: false
-  failed_when: false
+- name: Ensure md5 authentication for postgres user locally (temporary)
+  lineinfile:
+    path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
+    regexp: '^local\s+all\s+postgres\s+peer$'
+    line: 'local   all             postgres                                md5'
+    state: present
+  notify:
+    - Restart PostgreSQL
 
-- name: Set password for postgres user if not set
+- name: Set password for postgres user
   postgresql_user:
     name: postgres
     password: "{{ db_pass }}"
     state: present
-  when: postgres_password_status.stdout != "OK"
+    role_attr_flags: LOGIN
+    login_user: "postgres"
+    login_password: "{{ db_pass }}"
+    login_host: "localhost"
+    login_port: 5432
 
-- name: Create database user dynamically
+- name: Check if database user exists
+  shell: |
+    psql -U postgres -c "SELECT 1 FROM pg_roles WHERE rolname = '{{ db_user }}';" | grep -q 1 && echo "exists" || echo "missing"
+  become: yes
+  become_user: postgres
+  register: db_user_status
+  changed_when: false
+  failed_when: false
+
+- name: Create database user dynamically if not exists
   postgresql_user:
     name: "{{ db_user }}"
     password: "{{ db_pass }}"
@@ -74,10 +87,20 @@
     role_attr_flags: LOGIN
     login_user: "postgres"
     login_password: "{{ db_pass }}"
-    login_host: "{{ db_host }}"
+    login_host: "localhost"
     login_port: 5432
+  when: db_user_status.stdout != "exists"
 
-- name: Create database dynamically
+- name: Check if database exists
+  shell: |
+    psql -U postgres -c "SELECT 1 FROM pg_database WHERE datname = '{{ db_name }}';" | grep -q 1 && echo "exists" || echo "missing"
+  become: yes
+  become_user: postgres
+  register: db_exists_status
+  changed_when: false
+  failed_when: false
+
+- name: Create database dynamically if not exists
   postgresql_db:
     name: "{{ db_name }}"
     owner: "{{ db_user }}"
@@ -85,5 +108,27 @@
     state: present
     login_user: "postgres"
     login_password: "{{ db_pass }}"
-    login_host: "{{ db_host }}"
+    login_host: "localhost"
     login_port: 5432
+  when: db_exists_status.stdout != "exists"
+
+- name: Revert back to peer authentication for postgres user locally
+  lineinfile:
+    path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
+    regexp: '^local\s+all\s+postgres\s+md5$'
+    line: 'local   all             postgres                                peer'
+    state: present
+  notify:
+    - Restart PostgreSQL
+
+- name: Restart PostgreSQL if configuration changed
+  service:
+    name: postgresql
+    state: restarted
+  when: auth_config_updated.changed
+
+handlers:
+  - name: Restart PostgreSQL
+    service:
+      name: postgresql
+      state: restarted
