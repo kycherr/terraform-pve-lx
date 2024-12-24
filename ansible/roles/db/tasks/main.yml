@@ -70,9 +70,4 @@
     name: postgresql
     state: restarted
   when: false
-  
-handlers:
-  - name: Restart PostgreSQL
-    service:
-      name: postgresql
-      state: restarted
+
