@@ -43,17 +43,22 @@ provisioner "remote-exec" {
       host     = regex("[^/]+", var.ip_ansible)
     }
 
-    inline = [
-      "export DEBIAN_FRONTEND=noninteractive",
-      "apt update && apt install -y openssh-server ansible",
-      "echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config",
-      "systemctl restart sshd",
-      "mkdir -p /root/.ssh /etc/ansible",
-      "ssh-keyscan ${regex("[^/]+", var.ip_db)} >> ~/.ssh/known_hosts",
-      "ssh-keyscan ${regex("[^/]+", var.ip_web)} >> ~/.ssh/known_hosts",
-      "cat > /etc/ansible/hosts <<EOL\n[web]\n${regex("[^/]+", var.ip_web)}\n\n[db]\n${regex("[^/]+", var.ip_db)}\nEOL",
-      "ansible all -m ping -i /etc/ansible/hosts"
-    ]
+  inline = [
+    "export DEBIAN_FRONTEND=noninteractive",
+    "apt update && apt install -y openssh-server ansible sshpass",
+    "echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config",
+    "systemctl restart sshd",
+    "mkdir -p /root/.ssh /etc/ansible",
+    "ssh-keygen -t rsa -b 2048 -N '' -f /root/.ssh/id_rsa",
+    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${regex("[^/]+", var.ip_db)}",
+    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${regex("[^/]+", var.ip_web)}",
+    "ssh-keyscan ${regex("[^/]+", var.ip_db)} >> /root/.ssh/known_hosts",
+    "ssh-keyscan ${regex("[^/]+", var.ip_web)} >> /root/.ssh/known_hosts",
+    "echo -e '[web]\\n${regex("[^/]+", var.ip_web)}\\n\\n[db]\\n${regex("[^/]+", var.ip_db)}' > /etc/ansible/hosts",
+    "ansible all -m ping -i /etc/ansible/hosts"
+  ]
+
+
   }
 
   cores  = 2
