@@ -42,6 +42,7 @@
     repo: "https://github.com/Practical-DevOps/app-for-devops"
     dest: /var/www/html/app-for-devops
     force: yes
+    update: yes
 
 - name: Set database configuration
   template:
