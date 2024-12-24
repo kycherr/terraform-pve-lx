@@ -2,8 +2,41 @@
   git:
     repo: "https://github.com/Practical-DevOps/app-for-devops"
     dest: /var/www/html/app-for-devops
-    force: yes
     update: yes
+
+- name: Remove conflicting Node.js packages
+  apt:
+    name:
+      - nodejs
+      - libnode-dev
+    state: absent
+    purge: yes
+    autoremove: yes
+
+- name: Clean up residual Node.js files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/lib/node_modules
+    - /usr/include/node
+    - /usr/local/lib/node_modules
+
+- name: Add NodeSource repository for Node.js 20.x
+  shell: curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  args:
+    executable: /bin/bash
+
+- name: Install Node.js
+  apt:
+    name: nodejs
+    state: latest
+
+- name: Verify Node.js installation
+  command: node -v
+  register: node_version
+  changed_when: false
+  failed_when: '"v20" not in node_version.stdout'
 
 - name: Install required packages
   apt:
@@ -14,8 +47,6 @@
       - php-xml
       - php-curl
       - composer
-      - nodejs
-      - npm
     state: present
     update_cache: yes
 
@@ -29,6 +60,7 @@
     name: laravel
     home: /var/www/html/app-for-devops
     shell: /bin/bash
+    state: present
 
 - name: Set ownership of Laravel app
   file:
@@ -46,7 +78,7 @@
 
 - name: Create .env file from template
   template:
-    src: roles/server/templates/db.env.j2
+    src: db.env.j2
     dest: /var/www/html/app-for-devops/.env
     owner: laravel
     group: www-data
@@ -59,11 +91,6 @@
     owner: laravel
     group: www-data
 
-- name: Set database configuration
-  template:
-    src: db.env.j2
-    dest: /var/www/html/app-for-devops/.env
-
 - name: Update PHP dependencies
   become: yes
   become_user: laravel
@@ -74,7 +101,7 @@
 - name: Install PHP dependencies
   become: yes
   become_user: laravel
-  command: composer install
+  command: composer install --no-dev
   args:
     chdir: /var/www/html/app-for-devops
 
@@ -88,9 +115,14 @@
 - name: Run database migrations
   become: yes
   become_user: laravel
-  command: php artisan migrate --force
+  command: php artisan migrate --force --no-interaction
   args:
     chdir: /var/www/html/app-for-devops
+
+- name: Clean up existing node_modules (if any)
+  file:
+    path: /var/www/html/app-for-devops/node_modules
+    state: absent
 
 - name: Install NPM dependencies
   become: yes
@@ -106,15 +138,30 @@
   args:
     chdir: /var/www/html/app-for-devops
 
-- name: Set permissions for Laravel
-  file:
-    path: /var/www/html/app-for-devops
-    state: directory
-    mode: '0775'
-    recurse: yes
-
 - name: Enable Apache rewrite module
   command: a2enmod rewrite
+  args:
+    creates: /etc/apache2/mods-enabled/rewrite.load
+
+- name: Create Apache virtual host for Laravel
+  copy:
+    dest: /etc/apache2/sites-available/laravel.conf
+    content: |
+      <VirtualHost *:80>
+          ServerName laravel-app
+          DocumentRoot /var/www/html/app-for-devops/public
+
+          <Directory /var/www/html/app-for-devops/public>
+              AllowOverride All
+              Require all granted
+          </Directory>
+
+          ErrorLog ${APACHE_LOG_DIR}/laravel-error.log
+          CustomLog ${APACHE_LOG_DIR}/laravel-access.log combined
+      </VirtualHost>
+
+- name: Enable Apache site for Laravel
+  command: a2ensite laravel.conf
 
 - name: Restart Apache
   service:
