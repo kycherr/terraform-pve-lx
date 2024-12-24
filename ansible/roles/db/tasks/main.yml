@@ -48,7 +48,6 @@
     regexp: '^local\s+all\s+postgres\s+peer$'
     line: 'local   all             postgres                                md5'
     state: present
-  register: auth_config_updated
 
 - name: Allow remote connections in pg_hba.conf
   lineinfile:
@@ -56,7 +55,6 @@
     insertafter: '^# IPv4 local connections:'
     line: "host    all             all             0.0.0.0/0               md5"
     state: present
-  register: remote_config_updated
 
 - name: Allow PostgreSQL to listen on all IPs
   lineinfile:
@@ -64,13 +62,22 @@
     regexp: '^#listen_addresses ='
     line: "listen_addresses = '*'"
     state: present
-  register: listen_config_updated
 
 - name: Restart PostgreSQL service if configuration updated
   service:
     name: postgresql
     state: restarted
-  when:
-    - auth_config_updated.changed
-    - remote_config_updated.changed
-    - listen_config_updated.changed
+
+- name: Create database user dynamically
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_pass }}"
+    state: present
+    role_attr_flags: LOGIN
+
+- name: Create database dynamically
+  postgresql_db:
+    name: "{{ db_name }}"
+    owner: "{{ db_user }}"
+    encoding: "UTF8"
+    state: present
