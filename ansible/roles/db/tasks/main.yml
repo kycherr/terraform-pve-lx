@@ -23,11 +23,23 @@
     state: started
     enabled: yes
 
-- name: Set password for postgres user
-  postgresql_user:
-    name: postgres
-    password: "{{ db_pass }}"
-    state: present
+- name: Ensure password for postgres user is set
+  block:
+    - name: Check if postgres user password is already set
+      shell: |
+        psql -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+      become: yes
+      become_user: postgres
+      register: postgres_password_status
+      changed_when: false
+      failed_when: false
+
+    - name: Set password for postgres user if not set
+      postgresql_user:
+        name: postgres
+        password: "{{ db_pass }}"
+        state: present
+      when: postgres_password_status.stdout != "OK"
 
 - name: Ensure PostgreSQL uses md5 authentication for postgres user
   lineinfile:
@@ -58,3 +70,9 @@
     name: postgresql
     state: restarted
   when: false
+  
+handlers:
+  - name: Restart PostgreSQL
+    service:
+      name: postgresql
+      state: restarted
