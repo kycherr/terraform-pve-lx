@@ -41,7 +41,7 @@ provisioner "remote-exec" {
       type     = "ssh"
       user     = "root"
       password = var.lx_password
-      host     = regex("[^/]+", var.ip_ansible)
+      host     = var.ip_ansible
     }
 
   inline = [
@@ -57,7 +57,7 @@ provisioner "remote-exec" {
     #${var.lx_password}
     "sshpass -p P@ssw0rd ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_db}",
     "sshpass -p P@ssw0rd ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_web}",
-    "echo '[web]\\n${var.ip_web}\\n\\n[db]\\n${var.ip_db}' > /etc/ansible/hosts",
+    "echo '[server]\\n${var.ip_web}\\n\\n[db]\\n${var.ip_db}' > /etc/ansible/hosts",
     "ansible all -m ping -i /etc/ansible/hosts"
   ]
 
