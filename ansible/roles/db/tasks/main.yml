@@ -24,9 +24,10 @@
     enabled: yes
 
 - name: Set password for postgres user
-  become: yes
-  become_user: postgres
-  command: psql -c "ALTER USER postgres PASSWORD '{{ db_pass }}';"
+  postgresql_user:
+    name: postgres
+    password: "{{ db_pass }}"
+    state: present
 
 - name: Ensure PostgreSQL uses md5 authentication for postgres user
   lineinfile:
@@ -34,6 +35,7 @@
     regexp: '^local\s+all\s+postgres\s+peer$'
     line: 'local   all             postgres                                md5'
     state: present
+    notify: Restart PostgreSQL
 
 - name: Allow remote connections in pg_hba.conf
   lineinfile:
@@ -41,6 +43,7 @@
     insertafter: '^# IPv4 local connections:'
     line: "host    all             all             0.0.0.0/0               md5"
     state: present
+    notify: Restart PostgreSQL
 
 - name: Allow PostgreSQL to listen on all IPs
   lineinfile:
@@ -48,8 +51,10 @@
     regexp: '^#listen_addresses ='
     line: "listen_addresses = '*'"
     state: present
+    notify: Restart PostgreSQL
 
 - name: Restart PostgreSQL service
   service:
     name: postgresql
     state: restarted
+  when: false
