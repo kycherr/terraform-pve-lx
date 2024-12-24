@@ -28,7 +28,7 @@
   block:
     - name: Check if postgres user password is already set
       shell: |
-        psql -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+        PGPASSWORD="{{ db_pass }}" psql -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
       become: yes
       become_user: postgres
       register: postgres_password_status
@@ -74,6 +74,10 @@
     password: "{{ db_pass }}"
     state: present
     role_attr_flags: LOGIN
+  become: yes
+  become_user: postgres
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
 
 - name: Create database dynamically
   postgresql_db:
@@ -81,3 +85,7 @@
     owner: "{{ db_user }}"
     encoding: "UTF8"
     state: present
+  become: yes
+  become_user: postgres
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
