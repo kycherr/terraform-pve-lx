@@ -31,7 +31,7 @@ resource "proxmox_lxc" "ansible" {
   network {
     name = "eth0"
     bridge = var.vm_bridge
-    ip = var.ip_ansible
+    ip = "${var.ip_ansible}/24"
     gw = var.vm_gateway
   }
 
@@ -50,11 +50,11 @@ provisioner "remote-exec" {
     "systemctl restart sshd",
     "mkdir -p /root/.ssh /etc/ansible",
     "ssh-keygen -t rsa -b 2048 -N '' -f /root/.ssh/id_rsa",
-    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${regex("[^/]+", var.ip_db)}",
-    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${regex("[^/]+", var.ip_web)}",
-    "ssh-keyscan ${regex("[^/]+", var.ip_db)} >> /root/.ssh/known_hosts",
-    "ssh-keyscan ${regex("[^/]+", var.ip_web)} >> /root/.ssh/known_hosts",
-    "echo -e '[web]\\n${regex("[^/]+", var.ip_web)}\\n\\n[db]\\n${regex("[^/]+", var.ip_db)}' > /etc/ansible/hosts",
+    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_db}",
+    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_web}",
+    "ssh-keyscan ${var.ip_db} >> /root/.ssh/known_hosts",
+    "ssh-keyscan ${var.ip_web} >> /root/.ssh/known_hosts",
+    "echo -e '[web]\\n${var.ip_web}\\n\\n[db]\\n${var.ip_db}' > /etc/ansible/hosts",
     "ansible all -m ping -i /etc/ansible/hosts"
   ]
 
@@ -81,7 +81,7 @@ resource "proxmox_lxc" "web" {
   network {
     name = "eth0"
     bridge = var.vm_bridge
-    ip = var.ip_web
+    ip = "${var.ip_web}/24"
     gw = var.vm_gateway
   }
 
@@ -105,7 +105,7 @@ resource "proxmox_lxc" "db" {
   network {
     name = "eth0"
     bridge = var.vm_bridge
-    ip = var.ip_db
+    ip = "${var.ip_db}/24"
     gw = var.vm_gateway
   }
 
