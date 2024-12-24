@@ -48,9 +48,11 @@ provisioner "remote-exec" {
       "apt update && apt install -y openssh-server ansible",
       "echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config",
       "systemctl restart sshd",
-      "ssh-keyscan ${var.ip_db} >> ~/.ssh/known_hosts",
-      "ssh-keyscan ${var.ip_web} >> ~/.ssh/known_hosts",
-      "cat > /etc/ansible/hosts <<EOL\n[web]\n${var.ip_web}\n\n[db]\n${var.ip_db}\nEOL"
+      "mkdir -p /root/.ssh /etc/ansible",
+      "ssh-keyscan ${regex("[^/]+", var.ip_db)} >> ~/.ssh/known_hosts",
+      "ssh-keyscan ${regex("[^/]+", var.ip_web)} >> ~/.ssh/known_hosts",
+      "cat > /etc/ansible/hosts <<EOL\n[web]\n${regex("[^/]+", var.ip_web)}\n\n[db]\n${regex("[^/]+", var.ip_db)}\nEOL",
+      "ansible all -m ping -i /etc/ansible/hosts"
     ]
   }
 
