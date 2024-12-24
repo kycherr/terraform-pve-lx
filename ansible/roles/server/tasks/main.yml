@@ -1,3 +1,10 @@
+- name: Clone Laravel application
+  git:
+    repo: "https://github.com/Practical-DevOps/app-for-devops"
+    dest: /var/www/html/app-for-devops
+    force: yes
+    update: yes
+
 - name: Install required packages
   apt:
     name:
@@ -37,12 +44,20 @@
     mode: '0775'
     recurse: yes
 
-- name: Clone Laravel application
-  git:
-    repo: "https://github.com/Practical-DevOps/app-for-devops"
-    dest: /var/www/html/app-for-devops
-    force: yes
-    update: yes
+- name: Create .env file from template
+  template:
+    src: roles/server/templates/db.env.j2
+    dest: /var/www/html/app-for-devops/.env
+    owner: laravel
+    group: www-data
+    mode: '0664'
+
+- name: Ensure .env file is writable
+  file:
+    path: /var/www/html/app-for-devops/.env
+    mode: '0664'
+    owner: laravel
+    group: www-data
 
 - name: Set database configuration
   template:
