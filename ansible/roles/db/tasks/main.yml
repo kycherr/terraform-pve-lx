@@ -23,39 +23,19 @@
     state: started
     enabled: yes
 
-- name: Temporarily set peer authentication for local postgres user
+- name: Allow local connections without password
   lineinfile:
     path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
-    regexp: '^local\s+all\s+postgres\s+.*$'
+    regexp: '^local\s+all\s+postgres\s+md5$'
     line: 'local   all             postgres                                peer'
     state: present
-  notify:
-    - Restart PostgreSQL
 
-- name: Set password for postgres user
-  shell: |
-    psql -U postgres -c "ALTER USER postgres PASSWORD '{{ db_pass }}';"
-  become: yes
-  become_user: postgres
-  changed_when: false
-
-- name: Configure md5 authentication for local postgres user
-  lineinfile:
-    path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
-    regexp: '^local\s+all\s+postgres\s+peer$'
-    line: 'local   all             postgres                                md5'
-    state: present
-  notify:
-    - Restart PostgreSQL
-
-- name: Allow remote connections in pg_hba.conf
+- name: Ensure md5 authentication is used for remote connections
   lineinfile:
     path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
     insertafter: '^# IPv4 local connections:'
     line: "host    all             all             0.0.0.0/0               md5"
     state: present
-  notify:
-    - Restart PostgreSQL
 
 - name: Allow PostgreSQL to listen on all IP addresses
   lineinfile:
@@ -63,13 +43,27 @@
     regexp: '^#listen_addresses ='
     line: "listen_addresses = '*'"
     state: present
-  notify:
-    - Restart PostgreSQL
 
 - name: Restart PostgreSQL if configuration changed
   service:
     name: postgresql
     state: restarted
+
+- name: Check if postgres user password is already set
+  shell: |
+    psql -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+  become: yes
+  become_user: postgres
+  register: postgres_password_status
+  changed_when: false
+  failed_when: false
+
+- name: Set password for postgres user if not set
+  postgresql_user:
+    name: postgres
+    password: "{{ db_pass }}"
+    state: present
+  when: postgres_password_status.stdout != "OK"
 
 - name: Create database user dynamically if not exists
   postgresql_user:
@@ -79,7 +73,7 @@
     role_attr_flags: LOGIN
     login_user: "postgres"
     login_password: "{{ db_pass }}"
-    login_host: "{{ db_host }}"
+    login_host: "localhost"
     login_port: 5432
 
 - name: Create database dynamically if not exists
@@ -87,14 +81,9 @@
     name: "{{ db_name }}"
     owner: "{{ db_user }}"
     encoding: "UTF8"
+    template: "template0"
     state: present
     login_user: "postgres"
     login_password: "{{ db_pass }}"
-    login_host: "{{ db_host }}"
+    login_host: "localhost"
     login_port: 5432
-
-handlers:
-  - name: Restart PostgreSQL
-    service:
-      name: postgresql
-      state: restarted
