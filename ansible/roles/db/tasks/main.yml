@@ -1,48 +1,30 @@
 ---
-- name: Install required Python libraries
+- name: Ensure required Python libraries for PostgreSQL are installed
   apt:
     name:
       - python3-psycopg2
     state: present
     update_cache: yes
 
-- name: Install PostgreSQL
+- name: Install PostgreSQL server
   apt:
     name: "postgresql-{{ pg_version }}"
     state: present
     update_cache: yes
 
-- name: Install PostgreSQL client tools
+- name: Install PostgreSQL client
   apt:
     name: "postgresql-client-{{ pg_version }}"
     state: present
     update_cache: yes
 
-- name: Ensure PostgreSQL server is running
+- name: Ensure PostgreSQL service is running
   service:
     name: postgresql
     state: started
     enabled: yes
 
-- name: Ensure password for postgres user is set
-  block:
-    - name: Check if postgres user password is already set
-      shell: |
-        PGPASSWORD="{{ db_pass }}" psql -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
-      become: yes
-      become_user: postgres
-      register: postgres_password_status
-      changed_when: false
-      failed_when: false
-
-    - name: Set password for postgres user if not set
-      postgresql_user:
-        name: postgres
-        password: "{{ db_pass }}"
-        state: present
-      when: postgres_password_status.stdout != "OK"
-
-- name: Ensure PostgreSQL uses md5 authentication for postgres user
+- name: Ensure md5 authentication is used for postgres user
   lineinfile:
     path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
     regexp: '^local\s+all\s+postgres\s+peer$'
@@ -56,17 +38,33 @@
     line: "host    all             all             0.0.0.0/0               md5"
     state: present
 
-- name: Allow PostgreSQL to listen on all IPs
+- name: Allow PostgreSQL to listen on all IP addresses
   lineinfile:
     path: "/etc/postgresql/{{ pg_version }}/main/postgresql.conf"
     regexp: '^#listen_addresses ='
     line: "listen_addresses = '*'"
     state: present
 
-- name: Restart PostgreSQL service if configuration updated
+- name: Restart PostgreSQL if configuration changed
   service:
     name: postgresql
     state: restarted
+
+- name: Check if postgres user password is already set
+  shell: |
+    psql -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+  become: yes
+  become_user: postgres
+  register: postgres_password_status
+  changed_when: false
+  failed_when: false
+
+- name: Set password for postgres user if not set
+  postgresql_user:
+    name: postgres
+    password: "{{ db_pass }}"
+    state: present
+  when: postgres_password_status.stdout != "OK"
 
 - name: Create database user dynamically
   postgresql_user:
@@ -74,10 +72,10 @@
     password: "{{ db_pass }}"
     state: present
     role_attr_flags: LOGIN
-  become: yes
-  become_user: postgres
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
+    login_user: "postgres"
+    login_password: "{{ db_pass }}"
+    login_host: "{{ db_host }}"
+    login_port: 5432
 
 - name: Create database dynamically
   postgresql_db:
@@ -85,7 +83,7 @@
     owner: "{{ db_user }}"
     encoding: "UTF8"
     state: present
-  become: yes
-  become_user: postgres
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
+    login_user: "postgres"
+    login_password: "{{ db_pass }}"
+    login_host: "{{ db_host }}"
+    login_port: 5432
