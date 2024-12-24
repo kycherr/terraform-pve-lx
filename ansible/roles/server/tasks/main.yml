@@ -41,6 +41,13 @@
     src: db.env.j2
     dest: /var/www/html/app-for-devops/.env
 
+- name: Update PHP dependencies
+  become: yes
+  become_user: laravel
+  command: composer update
+  args:
+    chdir: /var/www/html/app-for-devops
+
 - name: Install PHP dependencies
   become: yes
   become_user: laravel
