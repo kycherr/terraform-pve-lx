@@ -1,0 +1,40 @@
+- name: Install required packages
+  apt:
+    name:
+      - apache2
+      - php
+      - php-pgsql
+      - composer
+      - nodejs
+      - npm
+    state: present
+    update_cache: yes
+
+- name: Clone Laravel application
+  git:
+    repo: "https://github.com/Practical-DevOps/app-for-devops"
+    dest: /var/www/html/app-for-devops
+    force: yes
+
+- name: Set database configuration
+  template:
+    src: db.env.j2
+    dest: /var/www/html/app-for-devops/.env
+
+- name: Install PHP dependencies
+  command: composer install chdir=/var/www/html/app-for-devops
+
+- name: Generate application key
+  command: php artisan key:generate chdir=/var/www/html/app-for-devops
+
+- name: Run database migrations
+  command: php artisan migrate chdir=/var/www/html/app-for-devops
+
+- name: Install NPM dependencies
+  command: npm install chdir=/var/www/html/app-for-devops
+
+- name: Build frontend assets
+  command: npm run build chdir=/var/www/html/app-for-devops
+
+- name: Set permissions for Laravel
+  command: chmod -R 775 /var/www/html/app-for-devops

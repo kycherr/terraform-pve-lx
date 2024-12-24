@@ -1,0 +1,3 @@
+app_env: production
+app_debug: false
+app_key: ""
