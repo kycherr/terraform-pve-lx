@@ -35,11 +35,14 @@ resource "proxmox_lxc" "ansible" {
     gw = var.vm_gateway
   }
 
-  provisioner "local-exec" {
-    command = <<EOL
-    scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa ansible/ root@${var.ip_ansible}:/root/
-    EOL
-  }
+provisioner "local-exec" {
+  command = <<EOL
+    if [ ! -f /root/.ssh/id_rsa ]; then
+      ssh-keygen -t rsa -b 2048 -N '' -f /root/.ssh/id_rsa
+    fi
+    sshpass -p "${var.lx_password}" scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ansible/ root@${var.ip_ansible}:/root/
+  EOL
+}
 
 provisioner "remote-exec" {
     connection {
