@@ -35,10 +35,6 @@ resource "proxmox_lxc" "ansible" {
     gw = var.vm_gateway
   }
 
-provisioner "file" {
-    source      = "./ansible"
-    destination = "/root/ansible"
-}
 
 provisioner "remote-exec" {
     connection {
