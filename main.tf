@@ -46,6 +46,7 @@ provisioner "remote-exec" {
 
   inline = [
     "export DEBIAN_FRONTEND=noninteractive",
+    # ansible-playbook main.yml --extra-vars "db_host=192.168.66.223 db_name=app_db db_user=app_user db_pass=app_pass" -i /etc/ansible/hosts
     #"echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && systemctl restart sshd",
     "apt update && apt install -y openssh-server ansible sshpass",
     "mkdir -p /root/.ssh /etc/ansible",
