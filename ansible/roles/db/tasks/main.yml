@@ -1,41 +1,41 @@
-- name: Ensure required Python libraries are installed
+- name: Install required Python libraries
   apt:
     name:
       - python3-psycopg2
-      - python3-pip
     state: present
     update_cache: yes
 
 - name: Install PostgreSQL
   apt:
-    name: postgresql
+    name: "postgresql-{{ pg_version }}"
     state: present
     update_cache: yes
 
-- name: Ensure PostgreSQL is running
+- name: Install PostgreSQL client tools
+  apt:
+    name: "postgresql-client-{{ pg_version }}"
+    state: present
+    update_cache: yes
+
+- name: Ensure PostgreSQL server is running
   service:
     name: postgresql
     state: started
     enabled: yes
 
-- name: Create database
-  postgresql_db:
-    name: "{{ db_name }}"
-    encoding: UTF8
-    lc_collate: en_US.UTF-8
-    lc_ctype: en_US.UTF-8
-    template: template0
+- name: Ensure PostgreSQL uses md5 authentication for postgres user
+  lineinfile:
+    path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
+    regexp: '^local\s+all\s+postgres\s+peer$'
+    line: 'local   all             postgres                                md5'
     state: present
 
-- name: Create database user
-  postgresql_user:
-    name: "{{ db_user }}"
-    password: "{{ db_pass }}"
-    state: present
+- name: Restart PostgreSQL service
+  service:
+    name: postgresql
+    state: restarted
 
-- name: Grant privileges on database
-  postgresql_privs:
-    database: "{{ db_name }}"
-    roles: "{{ db_user }}"
-    type: "database"
-    privs: "ALL"
+- name: Set password for postgres user
+  become: yes
+  become_user: postgres
+  command: psql -c "ALTER USER postgres PASSWORD '{{ db_pass }}';"

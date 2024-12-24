@@ -54,8 +54,9 @@ provisioner "remote-exec" {
     "ssh-keyscan ${var.ip_db} >> /root/.ssh/known_hosts",
     "ssh-keyscan ${var.ip_web} >> /root/.ssh/known_hosts",
     "ssh-keygen -t rsa -b 2048 -N '' -f /root/.ssh/id_rsa",
-    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_db}",
-    "sshpass -p \"${var.lx_password}\" ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_web}",
+    #${var.lx_password}
+    "sshpass -p P@ssw0rd ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_db}",
+    "sshpass -p P@ssw0rd ssh-copy-id -i /root/.ssh/id_rsa.pub root@${var.ip_web}",
     "echo '[web]\\n${var.ip_web}\\n\\n[db]\\n${var.ip_db}' > /etc/ansible/hosts",
     "ansible all -m ping -i /etc/ansible/hosts"
   ]
