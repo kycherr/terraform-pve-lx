@@ -1,7 +1,7 @@
 proxmox_url      = "https://10.9.9.5:8006/api2/json"
 proxmox_user     = "root@pam"
 proxmox_password = "zCbUofT4"
-vm_template      = "ubuntu-22.04-standard"
+vm_template      = "debian-12-standard_12.7-1_amd64.tar.zst"
 vm_storage       = "PVE-G5-B34"
 vm_bridge        = "vmbr1"
 vm_gateway       = "192.168.66.1"
